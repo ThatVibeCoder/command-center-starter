@@ -1,0 +1,218 @@
+{
+  "_read_me": "Demo-only sample data for http://localhost:8077/?demo. Production files stay empty arrays. Stats are real numbers or null; null renders as an em dash.",
+  "automations": [
+    {
+      "id": "content-poster",
+      "name": "Content auto-poster",
+      "description": "Every 20 minutes it claims approved content whose slot is due and dispatches it to Blotato. Gated by the autopost switch.",
+      "area": "content",
+      "trigger": { "type": "cron", "schedule": "*/20 * * * *" },
+      "active": true,
+      "stats": {
+        "lastRunAt": "2026-09-16T12:20:00-04:00",
+        "lastRunStatus": "success",
+        "runCount": 248,
+        "failureCount": 2,
+        "failureRate": 0.008,
+        "avgRunMs": 882,
+        "extras": [
+          { "label": "Posted 7d", "value": "31" },
+          { "label": "Failed", "value": "2" }
+        ]
+      },
+      "flow": {
+        "topologySource": "src/lib/automations/flowModel.ts · buildContentPosterFlow",
+        "nodes": [
+          { "id": "cron", "x": 0, "y": 0, "icon": "clock", "title": "Cron */20", "stat": "due-slot scan every 20 min", "tone": "accent", "detail": "The scheduled worker wakes every 20 minutes and starts the due-slot claim pass." },
+          { "id": "scan", "x": 300, "y": 0, "icon": "search", "title": "Due-slot claim", "stat": "content_post_targets", "tone": "default", "hint": "atomic claim + per-target dedupe", "detail": "The worker claims due targets atomically so a re-run cannot post the same target twice." },
+          { "id": "killswitch", "x": 600, "y": 0, "icon": "power", "title": "Autopost switch", "stat": "ON - dispatching", "tone": "accent", "pill": { "label": "ON", "tone": "accent" }, "detail": "The switch is the human safety gate. When off, the graph still scans but the dispatch lane is dashed and no publish call happens." },
+          { "id": "blotato", "x": 900, "y": 0, "icon": "send", "title": "Blotato", "stat": "31 posts last 7d", "tone": "accent", "detail": "Approved due targets are sent to Blotato for the platform-specific publish action." },
+          { "id": "platform", "x": 1200, "y": 0, "icon": "waypoints", "title": "Social platforms", "stat": "IG · TikTok · YT · Threads · LI", "tone": "default", "detail": "Blotato fans the post out to the configured platform accounts." }
+        ],
+        "edges": [
+          { "id": "e-cron-scan", "source": "cron", "target": "scan", "animated": false, "label": "*/20" },
+          { "id": "e-scan-kill", "source": "scan", "target": "killswitch", "animated": false },
+          { "id": "e-kill-blotato", "source": "killswitch", "target": "blotato", "animated": true, "label": "dispatch" },
+          { "id": "e-blotato-platform", "source": "blotato", "target": "platform", "animated": true, "label": "publish" }
+        ]
+      }
+    },
+    {
+      "id": "proposal-responded",
+      "name": "Proposal responded",
+      "description": "When a client approves or requests changes, the status flips, an audit event is written, the Notion mirror is enqueued, and Brian is emailed.",
+      "area": "proposals",
+      "trigger": { "type": "event", "source": "proposal.responded (/p/[token])" },
+      "active": true,
+      "stats": {
+        "lastRunAt": "2026-09-15T18:04:00-04:00",
+        "lastRunStatus": "success",
+        "runCount": 12,
+        "failureCount": 0,
+        "failureRate": 0,
+        "avgRunMs": 510,
+        "extras": [{ "label": "Responses", "value": "12" }]
+      },
+      "flow": {
+        "topologySource": "src/lib/automations/flowModel.ts · buildProposalRespondedFlow",
+        "nodes": [
+          { "id": "respond", "x": 0, "y": 90, "icon": "form", "title": "Client responds", "stat": "/p/[token] approve / changes", "tone": "accent", "hint": "event trigger", "detail": "The client action on the proposal page is the trigger." },
+          { "id": "status", "x": 300, "y": 90, "icon": "db", "title": "Status flip", "stat": "approved | changes_requested", "tone": "default", "detail": "The proposal status changes immediately before side effects run." },
+          { "id": "log", "x": 600, "y": 90, "icon": "log", "title": "proposal_events", "stat": "12 responses recorded", "tone": "accent", "detail": "An audit event stores what happened and when." },
+          { "id": "outbox", "x": 900, "y": 0, "icon": "folder", "title": "notion_sync_outbox", "stat": "enqueue mirror", "tone": "default", "small": true, "detail": "The Notion update is queued so it can be retried safely." },
+          { "id": "email", "x": 900, "y": 200, "icon": "mail", "title": "Email Brian", "stat": "Resend notify", "tone": "default", "small": true, "detail": "Brian receives the short notification for the response." }
+        ],
+        "edges": [
+          { "id": "e-respond-status", "source": "respond", "target": "status", "animated": true, "label": "responds" },
+          { "id": "e-status-log", "source": "status", "target": "log", "animated": true },
+          { "id": "e-log-outbox", "source": "log", "target": "outbox", "animated": true, "label": "PATCH" },
+          { "id": "e-log-email", "source": "log", "target": "email", "animated": true, "label": "notify" }
+        ]
+      }
+    },
+    {
+      "id": "reactivation-daily",
+      "name": "Reactivation drip",
+      "description": "Daily due-batch drip over active campaigns. Sender is off, so it marks and logs enrollments without sending.",
+      "area": "reactivation",
+      "trigger": { "type": "cron", "schedule": "0 13 * * *" },
+      "active": false,
+      "stats": {
+        "lastRunAt": null,
+        "lastRunStatus": null,
+        "runCount": null,
+        "failureCount": null,
+        "failureRate": null,
+        "avgRunMs": null,
+        "extras": [
+          { "label": "Contacts", "value": "128" },
+          { "label": "Sender", "value": "off" }
+        ]
+      },
+      "flow": {
+        "topologySource": "src/lib/automations/flowModel.ts · buildReactivationFlow",
+        "nodes": [
+          { "id": "cron", "x": 0, "y": 0, "icon": "clock", "title": "Cron 13:00", "stat": "daily due-batch drip", "tone": "accent", "detail": "The daily worker starts the drip scan." },
+          { "id": "campaign", "x": 300, "y": 0, "icon": "bell", "title": "Active campaigns", "stat": "2 active campaigns", "tone": "accent", "detail": "Only campaigns marked active are considered." },
+          { "id": "contacts", "x": 300, "y": 200, "icon": "users", "title": "Contact pool", "stat": "128 contacts", "tone": "default", "small": true, "hint": "global opt-out honored", "detail": "The contact pool is read with opt-outs respected." },
+          { "id": "sender", "x": 600, "y": 0, "icon": "mail", "title": "Sender", "stat": "OFF - marks & logs only", "tone": "dimmed", "pill": { "label": "OFF", "tone": "warn" }, "hint": "no-op stub - nothing sends", "detail": "The sender lane is intentionally switched off until a real email provider is wired." },
+          { "id": "outbox", "x": 900, "y": 0, "icon": "folder", "title": "Recipients", "stat": "reactivation_recipients", "tone": "default", "detail": "Recipients are marked/logged, but no outbound email is sent while the sender is off." }
+        ],
+        "edges": [
+          { "id": "e-cron-campaign", "source": "cron", "target": "campaign", "animated": true, "label": "due" },
+          { "id": "e-contacts-campaign", "source": "contacts", "target": "campaign", "animated": false },
+          { "id": "e-campaign-sender", "source": "campaign", "target": "sender", "animated": false },
+          { "id": "e-sender-outbox", "source": "sender", "target": "outbox", "animated": false, "dashed": true, "label": "mark only" }
+        ]
+      }
+    }
+  ],
+  "teams": [
+    {
+      "id": "upwork-team",
+      "name": "Upwork Team",
+      "command": "/upwork-team",
+      "department": "sales",
+      "teamType": "Sales Team",
+      "buildStatus": "building",
+      "purpose": "Runs live Upwork application sessions: dashboard check, status sweep, priority router, live apply loop, and Notion logging.",
+      "notionUrl": "https://app.notion.com/p/3b2987604c2381cebc10f834b3d58de9",
+      "sourceOfTruth": "~/.claude/skills/upwork-team/SKILL.md",
+      "flowAsOf": "2026-09-10",
+      "seats": [
+        { "name": "Job Scout", "type": "Scout" },
+        { "name": "Cover Letter Writer", "type": "Draft & Approve" },
+        { "name": "Application Runner", "type": "Bounded Action" },
+        { "name": "Application Tracker & Time Keeper", "type": "Bounded Action" },
+        { "name": "Status Sweeper & Reconciler", "type": "Triage" }
+      ],
+      "skills": [
+        { "name": "Upwork Team", "command": "/upwork-team", "seat": "Application Runner", "owns": "The live session: routing, scouting, the apply loop, status sweeps." },
+        { "name": "Upwork Application", "command": "/upwork-application", "seat": "Application Tracker & Time Keeper", "owns": "The Notion tracking system and all application logging workflows." }
+      ],
+      "flow": {
+        "topologySource": "src/lib/agentTeams/flowModel.ts · buildUpworkTeamFlow",
+        "nodes": [
+          { "id": "entry", "x": 0, "y": 330, "icon": "terminal", "title": "You type /upwork-team", "stat": "the only Upwork command you need", "tone": "accent", "detail": "The command always runs Orient first, then routes on what it finds." },
+          { "id": "dash", "x": 300, "y": 330, "icon": "db", "title": "Dashboard check", "stat": "connects · unread · offers · invites", "tone": "default", "detail": "One Upwork MCP call returns the session status line." },
+          { "id": "sweep", "x": 600, "y": 330, "icon": "trend", "title": "Status sweep", "stat": "open applications reconciled", "tone": "default", "detail": "Every open application is checked before new work starts." },
+          { "id": "router", "x": 900, "y": 330, "icon": "route", "title": "What needs Brian first?", "stat": "priority ladder · first match wins", "tone": "accent", "detail": "Offers beat warm messages, messages beat invites, invites beat cold scouting." },
+          { "id": "offers", "x": 1200, "y": 0, "icon": "check", "title": "1 · Offer pending", "stat": "real money on the table", "tone": "default", "detail": "Terms are read before Brian accepts or declines." },
+          { "id": "messages", "x": 1200, "y": 110, "icon": "mail", "title": "2 · Client message unread", "stat": "warm client beats cold application", "tone": "default", "detail": "The thread is read before a reply is drafted." },
+          { "id": "stage", "x": 1200, "y": 330, "icon": "trend", "title": "4 · Proposal moved stage", "stat": "lead with next step", "tone": "default", "detail": "A live proposal changed stage and needs the next action." },
+          { "id": "apply", "x": 1500, "y": 440, "icon": "browser", "title": "Apply", "stat": "the live application loop", "tone": "accent", "detail": "Browser-led, with Brian in the room." },
+          { "id": "preflight", "x": 1800, "y": 440, "icon": "check", "title": "Pre-flight", "stat": "lessons · templates · connects", "tone": "default", "detail": "Reads lessons, live templates, and the connects budget before the form opens." },
+          { "id": "loom", "x": 2100, "y": 440, "icon": "browser", "title": "Brian records Loom", "stat": "wait until he says done", "tone": "default", "pill": { "label": "Brian", "tone": "warn" }, "detail": "The session waits; it does not guess from silence." },
+          { "id": "letter", "x": 2400, "y": 440, "icon": "form", "title": "Write the cover letter", "stat": "personalized after Loom", "tone": "default", "detail": "The letter and screening answers are drafted after Brian finishes recording." },
+          { "id": "send", "x": 2700, "y": 440, "icon": "send", "title": "Brian clicks Send", "stat": "explicit go for this job", "tone": "accent", "pill": { "label": "Brian", "tone": "warn" }, "detail": "Submitting spends connects, so Brian gives the final go." },
+          { "id": "log", "x": 3000, "y": 330, "icon": "log", "title": "Close out", "stat": "proposal id · connects · status", "tone": "default", "detail": "The proposal ID and spend are logged back to Notion." }
+        ],
+        "edges": [
+          { "id": "e-entry-dash", "source": "entry", "target": "dash", "animated": false },
+          { "id": "e-dash-sweep", "source": "dash", "target": "sweep", "animated": false },
+          { "id": "e-sweep-router", "source": "sweep", "target": "router", "animated": false },
+          { "id": "e-router-offers", "source": "router", "target": "offers", "animated": false, "label": "1" },
+          { "id": "e-router-messages", "source": "router", "target": "messages", "animated": false, "label": "2" },
+          { "id": "e-router-stage", "source": "router", "target": "stage", "animated": false, "label": "4" },
+          { "id": "e-stage-apply", "source": "stage", "target": "apply", "animated": false },
+          { "id": "e-apply-preflight", "source": "apply", "target": "preflight", "animated": false },
+          { "id": "e-preflight-loom", "source": "preflight", "target": "loom", "animated": false },
+          { "id": "e-loom-letter", "source": "loom", "target": "letter", "animated": false },
+          { "id": "e-letter-send", "source": "letter", "target": "send", "animated": false },
+          { "id": "e-send-log", "source": "send", "target": "log", "animated": false }
+        ]
+      }
+    },
+    {
+      "id": "content-team",
+      "name": "Content Team",
+      "command": "/content-team",
+      "department": "marketing",
+      "teamType": "Content",
+      "buildStatus": "active",
+      "purpose": "The social engine across every platform: source scan, desk routing, drafting, review, and the Blotato handoff.",
+      "notionUrl": "https://app.notion.com/p/39c987604c238127b917ed45b99849c1",
+      "sourceOfTruth": "~/.claude/skills/content-team/SKILL.md",
+      "flowAsOf": "2026-09-10",
+      "seats": [
+        { "name": "Threads Copywriter", "type": "Draft & Approve" },
+        { "name": "TikTok Specialist", "type": "Draft & Approve" },
+        { "name": "Social Media Researcher", "type": "Scout" },
+        { "name": "Blotato Specialist", "type": "Bounded Action" }
+      ],
+      "skills": [
+        { "name": "Content Team", "command": "/content-team", "seat": "Social Media Researcher", "owns": "The front door, canon, queue, staleness pass, source scan, and Brian's order." },
+        { "name": "Threads Content Writer", "command": "/threads-writer", "seat": "Threads Copywriter", "owns": "Threads purpose, draft, and guardrail pass." },
+        { "name": "TikTok Engine", "command": "/tiktok-engine", "seat": "TikTok Specialist", "owns": "Scripts as HOOK, RECAPTURE, BEATS, and CAPTION." },
+        { "name": "Blotato", "command": "/blotato", "seat": "Blotato Specialist", "owns": "The publishing handoff after approval." }
+      ],
+      "flow": {
+        "topologySource": "src/lib/agentTeams/flowModel.ts · content-team builder",
+        "nodes": [
+          { "id": "entry", "x": 0, "y": 220, "icon": "terminal", "title": "You type /content-team", "stat": "one front door", "tone": "accent", "detail": "The team loads the Notion page, desk skills, account canon, queue, and source context before drafting." },
+          { "id": "scan", "x": 300, "y": 220, "icon": "search", "title": "Source scan", "stat": "questions · DMs · issue · trends", "tone": "default", "detail": "The researcher gathers real source material before any copy is written." },
+          { "id": "router", "x": 600, "y": 220, "icon": "route", "title": "Desk router", "stat": "pick the platform desk", "tone": "accent", "detail": "The order routes to the right platform desk instead of a generic writer." },
+          { "id": "threads", "x": 900, "y": 110, "icon": "form", "title": "Threads desk", "stat": "purpose before draft", "tone": "default", "detail": "The Threads writer declares the purpose before the words." },
+          { "id": "tiktok", "x": 900, "y": 330, "icon": "browser", "title": "TikTok desk", "stat": "HOOK · RECAPTURE · BEATS", "tone": "default", "detail": "Scripts are written in the approved TikTok shape." },
+          { "id": "review", "x": 1200, "y": 220, "icon": "check", "title": "Review queue", "stat": "Brian approves", "tone": "default", "pill": { "label": "Brian", "tone": "warn" }, "detail": "Drafts wait for Brian's click before the publishing handoff." },
+          { "id": "blotato", "x": 1500, "y": 220, "icon": "send", "title": "Blotato handoff", "stat": "approved only", "tone": "accent", "detail": "Approved posts move into the scheduling/publishing lane." }
+        ],
+        "edges": [
+          { "id": "e-entry-scan", "source": "entry", "target": "scan", "animated": false },
+          { "id": "e-scan-router", "source": "scan", "target": "router", "animated": false },
+          { "id": "e-router-threads", "source": "router", "target": "threads", "animated": false, "label": "Threads" },
+          { "id": "e-router-tiktok", "source": "router", "target": "tiktok", "animated": false, "label": "TikTok" },
+          { "id": "e-threads-review", "source": "threads", "target": "review", "animated": false },
+          { "id": "e-tiktok-review", "source": "tiktok", "target": "review", "animated": false },
+          { "id": "e-review-blotato", "source": "review", "target": "blotato", "animated": false, "label": "approved" }
+        ]
+      }
+    }
+  ],
+  "executions": [
+    { "id": "run-001", "automationId": "content-poster", "automationName": "Content auto-poster", "status": "success", "startedAt": "2026-09-16T12:20:00-04:00", "runMs": 882, "detail": "3 targets claimed · 3 posted" },
+    { "id": "run-002", "automationId": "proposal-responded", "automationName": "Proposal responded", "status": "success", "startedAt": "2026-09-15T18:04:00-04:00", "runMs": 510, "detail": "approved · notion mirror enqueued · email sent" },
+    { "id": "run-003", "automationId": "content-poster", "automationName": "Content auto-poster", "status": "error", "startedAt": "2026-09-15T16:00:00-04:00", "runMs": 1340, "detail": "Blotato returned 502 for YouTube target" },
+    { "id": "run-004", "automationId": "content-poster", "automationName": "Content auto-poster", "status": "skipped", "startedAt": "2026-09-15T15:40:00-04:00", "runMs": null, "detail": "No due slots" }
+  ]
+}
