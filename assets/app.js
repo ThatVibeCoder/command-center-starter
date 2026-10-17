@@ -63,6 +63,7 @@ function h(tag, attrs = {}, children = []) {
 }
 const labelArea = (x) => AREA_LABEL[x] || titleCase(x || "");
 const labelDept = (x) => DEPARTMENT_LABEL[x] || titleCase((x || "").replaceAll("_", " "));
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const titleCase = (s) => String(s || "").replaceAll("_", " ").replace(/\b\w/g, (m) => m.toUpperCase());
 const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
@@ -235,7 +236,7 @@ function teamRow(t) {
         h("span", { class: "sep" }, "·"),
         h("span", {}, `${(t.skills || []).length} skill${(t.skills || []).length === 1 ? "" : "s"}`),
         h("span", { class: "sep" }, "·"),
-        h("span", {}, t.flow ? `flow as of ${t.flowAsOf || "unknown"}` : "no flow drawn yet")
+        h("span", {}, hasFlow(t.flow) ? `flow as of ${t.flowAsOf || "unknown"}` : "no flow drawn yet")
       ])
     ]),
     arrow()
@@ -290,7 +291,7 @@ function detailHead(kind, item, tabKey) {
       ? [h("h1", {}, item.name), commandPill(item.command), chip(labelDept(item.department)), buildStatusChip(item.buildStatus)]
       : [h("h1", {}, item.name || item.id), chip(labelArea(item.area)), statusChip(!!item.active)]),
     h("p", { class: "trigger-line" }, isTeam
-      ? [h("span", {}, item.teamType || "Team"), h("span", { class: "sep" }, "·"), h("span", {}, `${(item.seats || []).length} seats`), h("span", { class: "sep" }, "·"), h("span", {}, `${(item.skills || []).length} skills`), h("span", { class: "sep" }, "·"), h("span", {}, `flow as of ${item.flowAsOf || "unknown"}`)]
+      ? [h("span", {}, item.teamType || "Team"), h("span", { class: "sep" }, "·"), h("span", {}, plural((item.seats || []).length, "seat")), h("span", { class: "sep" }, "·"), h("span", {}, plural((item.skills || []).length, "skill")), h("span", { class: "sep" }, "·"), h("span", {}, `flow as of ${item.flowAsOf || "unknown"}`), item.lastUsed ? h("span", { class: "sep" }, "·") : null, item.lastUsed ? h("span", {}, `last used ${rel(item.lastUsed) || item.lastUsed}`) : null].filter(Boolean)
       : triggerSummary(item.trigger)),
     h("nav", { class: "subtabs detail-subtabs", "aria-label": `${item.name} sections` }, isTeam
       ? [tab(base, "Flow", tabKey === "flow"), tab(`${base}/seats`, "Seats & skills", tabKey === "seats")]
@@ -322,7 +323,7 @@ function renderTeamDetail(id, sub = "flow", memberSlug = null) {
   ]);
   return h("div", { class: "dash-flow-shell" }, [
     h("div", { class: "flow-head" }, h("div", { class: "dash-gutter" }, detailHead("team", t, "flow"))),
-    h("div", { class: "flow-body" }, renderFlow(t.flow, t.name))
+    h("div", { class: "flow-body" }, renderFlow(t.flow, t.name, "team"))
   ]);
 }
 function renderSeats(t) {
@@ -357,12 +358,16 @@ function renderMemberDetail(t, memberSlug) {
 }
 
 const POS_SCALE_X = 1.26, POS_SCALE_Y = 1.06, NODE_W = 288, NODE_H = 76, SMALL_W = 214, HINT_NUDGE = 11;
-function renderFlow(flow, title) {
+const hasFlow = (flow) => !!flow && Array.isArray(flow.nodes) && flow.nodes.length > 0;
+function renderFlow(flow, title, kind = "automation") {
   const wrap = h("div", { class: "dash-flow-canvas", "aria-label": `${title} flow diagram` });
-  if (!flow || !Array.isArray(flow.nodes) || !flow.nodes.length) {
-    wrap.append(emptyState("waypoints", "No diagram yet", "Add a <code>flow</code> block with nodes and edges. Draw every real branch, including switched-off paths."));
+  if (!hasFlow(flow)) {
+    wrap.append(kind === "team"
+      ? emptyState("waypoints", "No system mapped yet", "When this team's system gets built, add its <code>flow</code> to <code>teams.json</code>: <code>phases</code> (the boxes), <code>nodes</code> (the steps inside them) and <code>edges</code> (the arrows). See the README.")
+      : emptyState("waypoints", "No diagram yet", "Add a <code>flow</code> block with nodes and edges. Draw every real branch, including switched-off paths."));
     return wrap;
   }
+  if (Array.isArray(flow.phases) && flow.phases.length) return renderPhasedFlow(flow, wrap);
   const stage = h("div", { class: "flow-stage" });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   stage.append(svg);
@@ -431,11 +436,118 @@ function renderFlow(flow, title) {
     ])]);
     stage.append(node);
   }
-  wrap.append(inspect, controls(stage, wrap, flow), minimap(flow));
-  requestAnimationFrame(() => fitFlow(wrap, stage, flow));
-  wirePanZoom(wrap, stage, flow);
+  const bounds = graphBounds(flow);
+  wrap.append(inspect, controls(stage, wrap, bounds), minimap(flow));
+  requestAnimationFrame(() => fitFlow(wrap, stage, bounds));
+  wirePanZoom(wrap, stage, bounds);
   return wrap;
 }
+// ---- Phased flow: each phase is a coloured, labelled box holding its steps ----
+// flow = { phases: [{id, label, color?, x?, y?}], nodes: [{id, phase, label, sub?, icon?, badge?, detail?}],
+//          edges: [{from, to, label?, dashed?}], perRow? }. Phases auto-lay left→right (wrapping after
+// perRow, default 6); a phase with x/y keeps that spot. Steps stack top→bottom inside their box.
+const PHASE_COLORS = { teal: "#42caad", sky: "#5aa9e6", violet: "#a78bfa", amber: "#f5b54a", rose: "#f4728b", lime: "#9bd35a", slate: "#9aa3ad" };
+const PH = { W: 296, PAD: 20, HEAD: 50, GAP: 12, NODE_H: 66, COL_GAP: 96, ROW_GAP: 110 };
+const phaseColor = (c) => PHASE_COLORS[c] || (/^#[0-9a-f]{3,8}$/i.test(c || "") ? c : PHASE_COLORS.slate);
+function layoutPhases(flow) {
+  const phases = flow.phases.map((p) => ({ ...p, color: phaseColor(p.color), nodes: flow.nodes.filter((n) => n.phase === p.id) }));
+  const perRow = Math.max(1, flow.perRow || 6);
+  let rowTop = 0, rowH = 0;
+  phases.forEach((p, i) => {
+    const col = i % perRow;
+    if (col === 0 && i > 0) { rowTop += rowH + PH.ROW_GAP; rowH = 0; }
+    p.w = PH.W;
+    p.h = PH.HEAD + Math.max(1, p.nodes.length) * (PH.NODE_H + PH.GAP) - PH.GAP + PH.PAD;
+    p.x = Number.isFinite(p.x) ? p.x : col * (PH.W + PH.COL_GAP);
+    p.y = Number.isFinite(p.y) ? p.y : rowTop;
+    rowH = Math.max(rowH, p.h);
+    p.nodes.forEach((n, j) => Object.assign(n, { _x: p.x + PH.PAD, _y: p.y + PH.HEAD + j * (PH.NODE_H + PH.GAP), _w: PH.W - PH.PAD * 2, _h: PH.NODE_H }));
+  });
+  const nodes = new Map(phases.flatMap((p) => p.nodes.map((n) => [n.id, n])));
+  const boxes = new Map(phases.map((p) => [p.id, { _x: p.x, _y: p.y, _w: p.w, _h: p.h, phase: p.id }]));
+  const b = { x: Math.min(...phases.map((p) => p.x)), y: Math.min(...phases.map((p) => p.y)), r: Math.max(...phases.map((p) => p.x + p.w)), b: Math.max(...phases.map((p) => p.y + p.h)) };
+  return { phases, nodes, boxes, bounds: b };
+}
+function phaseEdgePath(s, t, sPhase, tPhase, floor) {
+  const sx = s._x, sy = s._y, tx = t._x, ty = t._y;
+  if (sPhase === tPhase && ty > sy) { // the next step in the same box: straight down
+    const x = sx + s._w / 2;
+    return `M ${x} ${sy + s._h} L ${x} ${ty}`;
+  }
+  if (tx >= sx + s._w) return bezier(sx + s._w, sy + s._h / 2, tx, ty + t._h / 2); // forward
+  if (ty >= sy + s._h + 40 && Math.abs(tx - sx) < s._w) { // straight below in another row
+    const x1 = sx + s._w / 2, x2 = tx + t._w / 2, mid = (sy + s._h + ty) / 2;
+    return `M ${x1} ${sy + s._h} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${ty}`;
+  }
+  // a loop back: drop under everything, run left, come up into the target's bottom
+  const x1 = sx + s._w / 2, x2 = tx + t._w / 2, y = floor + 56;
+  return `M ${x1} ${sy + s._h} C ${x1} ${y}, ${x1} ${y}, ${x1 - 40} ${y} L ${x2 + 40} ${y} C ${x2} ${y}, ${x2} ${y}, ${x2} ${ty + t._h}`;
+}
+function renderPhasedFlow(flow, wrap) {
+  const L = layoutPhases(flow);
+  const b = L.bounds;
+  const stage = h("div", { class: "flow-stage", style: `width:${b.r + 400}px;height:${b.b + 400}px` });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.innerHTML = '<defs><marker id="ph-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,.42)" stroke="none"/></marker></defs>';
+  for (const p of L.phases) {
+    stage.append(h("section", { class: "phase-box", style: `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px;--ph:${p.color}`, "aria-label": `${p.label} phase` }, [
+      h("header", { class: "phase-head" }, [h("span", { class: "phase-dot" }), h("span", { class: "phase-label" }, p.label), h("span", { class: "phase-count" }, `${p.nodes.length} step${p.nodes.length === 1 ? "" : "s"}`)]),
+      p.nodes.length ? null : h("p", { class: "phase-empty" }, "No steps yet")
+    ].filter(Boolean)));
+  }
+  stage.append(svg);
+  const end = (id) => L.nodes.get(id) || L.boxes.get(id);
+  for (const e of flow.edges || []) {
+    const s = end(e.from ?? e.source), t = end(e.to ?? e.target);
+    if (!s || !t) continue;
+    const d = phaseEdgePath(s, t, s.phase, t.phase, b.b);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", `edge-path phase-edge ${e.dashed ? "dashed" : ""}`);
+    path.setAttribute("marker-end", "url(#ph-arrow)");
+    svg.append(path);
+    if (e.label) {
+      const forward = t._x >= s._x + s._w;
+      const lx = forward ? (s._x + s._w + t._x) / 2 : (s._x + s._w / 2 + t._x + t._w / 2) / 2;
+      const ly = forward ? (s._y + s._h / 2 + t._y + t._h / 2) / 2 : s.phase === t.phase ? (s._y + s._h + t._y) / 2 : b.b + 56;
+      stage.append(h("span", { class: "edge-label", style: `left:${lx}px;top:${ly}px` }, e.label));
+    }
+  }
+  let selected = null;
+  const inspect = h("aside", { class: "inspect glass hide" });
+  for (const p of L.phases) for (const n of p.nodes) {
+    const node = h("button", {
+      type: "button", class: "node glass phase-node", "data-node-id": n.id,
+      style: `left:${n._x}px;top:${n._y}px;width:${n._w}px;min-height:${n._h}px;--ph:${p.color}`,
+      onclick: () => {
+        selected?.classList.remove("selected"); selected = node; node.classList.add("selected");
+        inspect.classList.remove("hide"); inspect.innerHTML = "";
+        inspect.append(h("div", { class: "inspect-head" }, [
+          h("span", { class: "inspect-icon", style: `color:${p.color};border-color:${p.color}66;background:${p.color}1f`, html: icon(n.icon || "waypoints") }),
+          h("div", {}, [h("h3", {}, n.label || n.id), h("p", { class: "stat" }, `${p.label} phase${n.sub ? ` · ${n.sub}` : ""}`)]),
+          h("button", { type: "button", "aria-label": "Close details", onclick: () => inspect.classList.add("hide"), html: icon("close") })
+        ]), h("p", {}, n.detail || "No detail has been written for this step."));
+      }
+    }, [h("div", { class: "node-row" }, [
+      h("span", { class: "node-icon", html: icon(n.icon || "waypoints") }),
+      h("span", { class: "node-text" }, [
+        h("span", { class: "node-title" }, [h("span", {}, n.label || n.id), n.badge ? h("span", { class: "node-badge" }, n.badge) : null].filter(Boolean)),
+        n.sub ? h("p", { class: "node-stat" }, n.sub) : null
+      ].filter(Boolean))
+    ])]);
+    stage.append(node);
+  }
+  wrap.append(stage);
+  // minimap: the coloured phase boxes, scaled to fit
+  const mw = b.r - b.x, mh = b.b - b.y + 70, k = Math.min(130 / mw, 70 / mh);
+  const rects = L.phases.map((p) => `<rect x="${10 + (p.x - b.x) * k}" y="${10 + (p.y - b.y) * k}" width="${Math.max(4, p.w * k)}" height="${Math.max(4, p.h * k)}" rx="2" fill="${p.color}" fill-opacity=".28" stroke="${p.color}" stroke-opacity=".8" stroke-width=".8"/>`).join("");
+  const bounds = { ...b, b: b.b + 70 };
+  wrap.append(inspect, controls(stage, wrap, bounds), h("div", { class: "minimap glass", html: `<svg viewBox="0 0 150 90" aria-hidden="true">${rects}</svg>` }));
+  requestAnimationFrame(() => fitFlow(wrap, stage, bounds));
+  wirePanZoom(wrap, stage, bounds);
+  return wrap;
+}
+
 function bezier(x1, y1, x2, y2) {
   const len = Math.hypot(x2 - x1, y2 - y1);
   const c = Math.max(.05, Math.min(.26, 85 / (len || 1)));
@@ -456,8 +568,8 @@ function graphBounds(flow) {
     b: Math.max(...nodes.map((n) => n.y + n.h))
   };
 }
-function fitFlow(wrap, stage, flow) {
-  const b = graphBounds(flow), box = wrap.getBoundingClientRect();
+function fitFlow(wrap, stage, b) {
+  const box = wrap.getBoundingClientRect();
   const z = Math.max(.35, Math.min(1.15, (box.width * .86) / (b.r - b.x), (box.height * .78) / (b.b - b.y)));
   state.flow.zoom = z;
   state.flow.pan = { x: Math.max(24, (box.width - (b.r - b.x) * z) / 2) - b.x * z, y: Math.max(24, (box.height - (b.b - b.y) * z) / 2) - b.y * z };
@@ -468,16 +580,16 @@ function applyFlow(stage) {
   const z = $(".zoom-label", stage.parentElement);
   if (z) z.textContent = `${Math.round(state.flow.zoom * 100)}%`;
 }
-function controls(stage, wrap, flow) {
+function controls(stage, wrap, bounds) {
   const c = h("div", { class: "flow-controls glass" }, [
     h("button", { type: "button", title: "Zoom in", onclick: () => { state.flow.zoom = Math.min(1.75, state.flow.zoom * 1.12); applyFlow(stage); } }, "+"),
     h("button", { type: "button", title: "Zoom out", onclick: () => { state.flow.zoom = Math.max(.2, state.flow.zoom * .89); applyFlow(stage); } }, "−"),
-    h("button", { type: "button", title: "Fit", onclick: () => fitFlow(wrap, stage, flow) }, "⤢"),
+    h("button", { type: "button", title: "Fit", onclick: () => fitFlow(wrap, stage, bounds) }, "⤢"),
     h("span", { class: "zoom-label" }, "100%")
   ]);
   return c;
 }
-function wirePanZoom(wrap, stage, flow) {
+function wirePanZoom(wrap, stage, bounds) {
   let drag = null;
   wrap.addEventListener("pointerdown", (e) => {
     if (e.target.closest(".node,.inspect,.flow-controls,.minimap")) return;
@@ -498,7 +610,7 @@ function wirePanZoom(wrap, stage, flow) {
     state.flow.zoom = Math.max(.2, Math.min(1.75, state.flow.zoom * (e.deltaY > 0 ? .92 : 1.08)));
     applyFlow(stage);
   }, { passive: false });
-  window.addEventListener("resize", () => fitFlow(wrap, stage, flow), { once: true });
+  window.addEventListener("resize", () => fitFlow(wrap, stage, bounds), { once: true });
 }
 function minimap(flow) {
   const b = graphBounds(flow), w = b.r - b.x, hgt = b.b - b.y;
