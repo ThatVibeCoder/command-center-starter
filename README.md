@@ -10,6 +10,8 @@ Open `http://localhost:8077/?demo` to see the sample data from `data/EXAMPLES.js
 
 Those production files intentionally start as empty arrays.
 
+**Adding a team with Claude or Codex:** just say "add a team for my newsletter" (or any system). `AGENTS.md` (Codex reads it; `CLAUDE.md` points Claude to it) has the shape and the rules, and the `add-team` skill (`.claude/skills/` and `.agents/skills/`) asks you 4 quick questions and writes the team into `data/teams.json` for you.
+
 ## The One Data Rule
 
 Stats are honest or absent. Use a real number when you can back it up. Use `null` when you cannot. The UI renders `null` as `—`; it never turns an unknown value into `0`.
@@ -114,6 +116,40 @@ Use the same spacing as the source app: normal nodes are 288px wide, small nodes
 ```
 
 The Agent Teams tab renders registry-style rows grouped by department. Clicking a team opens the team’s flow. The `Seats & skills` tab lists seats and skills, and each seat can be clicked for a focused seat detail view.
+
+### A team's system, in phases
+
+When a team's system gets built, give its `flow` a list of `phases`. Each phase is drawn as a coloured, labelled box, its steps stack inside it, and arrows join the steps. You can drag to pan, use + / − / ⤢ (fit) to zoom, and click a step to read its detail. A team with no flow yet shows a "No system mapped yet" card, so a new team can start empty.
+
+```json
+"flow": {
+  "phases": [
+    { "id": "plan",    "label": "Plan",    "color": "violet" },
+    { "id": "create",  "label": "Create",  "color": "amber" },
+    { "id": "publish", "label": "Publish", "color": "teal" }
+  ],
+  "nodes": [
+    { "id": "pick",   "phase": "plan",    "label": "Pick today's idea", "sub": "One idea, one angle", "icon": "sparkle" },
+    { "id": "script", "phase": "create",  "label": "Script + captions", "icon": "log", "detail": "Shown when the step is clicked." },
+    { "id": "record", "phase": "create",  "label": "Record", "badge": "you" },
+    { "id": "post",   "phase": "publish", "label": "Post + confirm", "icon": "send" }
+  ],
+  "edges": [
+    { "from": "pick", "to": "script" },
+    { "from": "script", "to": "record" },
+    { "from": "record", "to": "post", "label": "approved" },
+    { "from": "post", "to": "pick", "label": "learn", "dashed": true }
+  ]
+}
+```
+
+- `phases` are laid out left to right in the order you list them, wrapping after `perRow` (default 6). Give a phase `x` and `y` (pixels) to pin it somewhere else.
+- `color` is one of `teal`, `sky`, `violet`, `amber`, `rose`, `lime`, `slate`, or any hex like `#ff8800`.
+- A node's `phase` says which box it sits in; nodes stack in the order you list them. `sub`, `icon`, `badge` and `detail` are optional.
+- An edge can point at a step or at a whole phase (`"to": "publish"`). An arrow that goes backwards loops under the boxes, and `dashed: true` marks a path that isn't switched on yet.
+- A flow without `phases` still uses the free-form `x`/`y` layout described in Flow Shape above.
+
+See the Content Studio team in `data/EXAMPLES.json` (open `?demo`) for a full example.
 
 ## Executions Shape
 

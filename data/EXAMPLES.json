@@ -109,6 +109,271 @@
   ],
   "teams": [
     {
+      "id": "content-studio",
+      "name": "Content Studio",
+      "command": "/content-studio",
+      "department": "marketing",
+      "teamType": "Marketing Team",
+      "buildStatus": "active",
+      "purpose": "Turns one idea a day into a reviewed, scheduled post on every platform, and learns from what performed.",
+      "sourceOfTruth": "~/.claude/skills/content-studio/SKILL.md",
+      "flowAsOf": "2026-10-17",
+      "lastUsed": "2026-10-16T21:30:00-04:00",
+      "seats": [
+        {
+          "name": "Strategist",
+          "type": "Plan"
+        },
+        {
+          "name": "Writer",
+          "type": "Draft & Approve"
+        },
+        {
+          "name": "Editor",
+          "type": "Bounded Action"
+        },
+        {
+          "name": "Publisher",
+          "type": "Bounded Action"
+        },
+        {
+          "name": "Analyst",
+          "type": "Scout"
+        }
+      ],
+      "skills": [
+        {
+          "name": "Content Studio",
+          "command": "/content-studio",
+          "seat": "Strategist",
+          "owns": "The session: picks today's idea, runs the phases in order, and hands drafts to review."
+        },
+        {
+          "name": "Post Writer",
+          "command": "/post-writer",
+          "seat": "Writer",
+          "owns": "Hooks, captions and scripts in the brand's voice, one draft per platform."
+        },
+        {
+          "name": "Video Editor",
+          "command": "/video-editor",
+          "seat": "Editor",
+          "owns": "Cuts the recording, adds captions and a cover, exports per platform."
+        },
+        {
+          "name": "Scheduler",
+          "command": "/scheduler",
+          "seat": "Publisher",
+          "owns": "Books approved posts into open slots and confirms they went live."
+        },
+        {
+          "name": "Weekly Review",
+          "command": "/weekly-review",
+          "seat": "Analyst",
+          "owns": "Reads the week's numbers and writes the three lessons that steer next week's plan."
+        }
+      ],
+      "flow": {
+        "phases": [
+          {
+            "id": "intake",
+            "label": "Intake",
+            "color": "sky"
+          },
+          {
+            "id": "plan",
+            "label": "Plan",
+            "color": "violet"
+          },
+          {
+            "id": "create",
+            "label": "Create",
+            "color": "amber"
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "color": "rose"
+          },
+          {
+            "id": "publish",
+            "label": "Publish",
+            "color": "teal"
+          },
+          {
+            "id": "learn",
+            "label": "Learn",
+            "color": "lime"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ideas",
+            "phase": "intake",
+            "label": "Idea inbox",
+            "sub": "Notes, DMs, comments",
+            "icon": "mail",
+            "detail": "Every idea lands in one inbox: voice notes, saved comments, questions from DMs."
+          },
+          {
+            "id": "trends",
+            "phase": "intake",
+            "label": "Trend scan",
+            "sub": "Daily, 9 AM",
+            "icon": "search",
+            "detail": "A morning scan of what's moving in the niche, added to the inbox with a source link."
+          },
+          {
+            "id": "pick",
+            "phase": "plan",
+            "label": "Pick today's idea",
+            "sub": "One idea, one angle",
+            "icon": "sparkle",
+            "detail": "The Strategist picks the single best idea for today and writes the angle in one line."
+          },
+          {
+            "id": "brief",
+            "phase": "plan",
+            "label": "Write the brief",
+            "sub": "Hook · point · CTA",
+            "icon": "form",
+            "detail": "A five-line brief: who it's for, the hook, the one point, the proof, the call to action."
+          },
+          {
+            "id": "script",
+            "phase": "create",
+            "label": "Script + captions",
+            "sub": "Per platform",
+            "icon": "log",
+            "detail": "The Writer drafts the script and a caption for each platform from the brief."
+          },
+          {
+            "id": "record",
+            "phase": "create",
+            "label": "Record",
+            "sub": "You, on camera",
+            "icon": "user",
+            "badge": "you",
+            "detail": "The one step that needs you: read the script on camera."
+          },
+          {
+            "id": "edit",
+            "phase": "create",
+            "label": "Edit + cover",
+            "sub": "Cuts, captions, cover",
+            "icon": "terminal",
+            "detail": "The Editor cuts the take, burns in captions and makes the cover."
+          },
+          {
+            "id": "check",
+            "phase": "review",
+            "label": "Quality check",
+            "sub": "Voice, facts, links",
+            "icon": "shield",
+            "detail": "An automatic pass for banned phrases, broken links and claims without a source."
+          },
+          {
+            "id": "approve",
+            "phase": "review",
+            "label": "Your approval",
+            "sub": "Approve or send back",
+            "icon": "check",
+            "badge": "gate",
+            "detail": "Nothing posts until you approve it in the review queue."
+          },
+          {
+            "id": "schedule",
+            "phase": "publish",
+            "label": "Schedule",
+            "sub": "Next open slot",
+            "icon": "clock",
+            "detail": "Approved posts are booked into the next open slot on each platform."
+          },
+          {
+            "id": "post",
+            "phase": "publish",
+            "label": "Post + confirm",
+            "sub": "Checks it went live",
+            "icon": "send",
+            "detail": "Posts go out and the Publisher confirms each one is actually live."
+          },
+          {
+            "id": "stats",
+            "phase": "learn",
+            "label": "Weekly numbers",
+            "sub": "Views, saves, replies",
+            "icon": "trend",
+            "detail": "Once a week, the Analyst pulls the numbers for every post."
+          },
+          {
+            "id": "lessons",
+            "phase": "learn",
+            "label": "Three lessons",
+            "sub": "Feeds next week's plan",
+            "icon": "sparkle",
+            "detail": "Three plain lessons from the numbers, written where the Strategist reads them before picking ideas."
+          }
+        ],
+        "edges": [
+          {
+            "from": "ideas",
+            "to": "trends"
+          },
+          {
+            "from": "trends",
+            "to": "pick"
+          },
+          {
+            "from": "pick",
+            "to": "brief"
+          },
+          {
+            "from": "brief",
+            "to": "script"
+          },
+          {
+            "from": "script",
+            "to": "record"
+          },
+          {
+            "from": "record",
+            "to": "edit"
+          },
+          {
+            "from": "edit",
+            "to": "check"
+          },
+          {
+            "from": "check",
+            "to": "approve"
+          },
+          {
+            "from": "approve",
+            "to": "schedule",
+            "label": "approved"
+          },
+          {
+            "from": "schedule",
+            "to": "post"
+          },
+          {
+            "from": "post",
+            "to": "stats"
+          },
+          {
+            "from": "stats",
+            "to": "lessons"
+          },
+          {
+            "from": "lessons",
+            "to": "pick",
+            "label": "steers the next plan",
+            "dashed": true
+          }
+        ]
+      }
+    },
+    {
       "id": "upwork-team",
       "name": "Upwork Team",
       "command": "/upwork-team",
@@ -131,35 +396,157 @@
         { "name": "Upwork Application", "command": "/upwork-application", "seat": "Application Tracker & Time Keeper", "owns": "The Notion tracking system and all application logging workflows." }
       ],
       "flow": {
-        "topologySource": "src/lib/agentTeams/flowModel.ts · buildUpworkTeamFlow",
+        "phases": [
+          {
+            "id": "start",
+            "label": "Start",
+            "color": "sky"
+          },
+          {
+            "id": "check",
+            "label": "Check",
+            "color": "violet"
+          },
+          {
+            "id": "handle",
+            "label": "Handle first",
+            "color": "rose"
+          },
+          {
+            "id": "apply",
+            "label": "Apply",
+            "color": "amber"
+          },
+          {
+            "id": "send",
+            "label": "Send",
+            "color": "teal"
+          }
+        ],
         "nodes": [
-          { "id": "entry", "x": 0, "y": 330, "icon": "terminal", "title": "You type /upwork-team", "stat": "the only Upwork command you need", "tone": "accent", "detail": "The command always runs Orient first, then routes on what it finds." },
-          { "id": "dash", "x": 300, "y": 330, "icon": "db", "title": "Dashboard check", "stat": "connects · unread · offers · invites", "tone": "default", "detail": "One Upwork MCP call returns the session status line." },
-          { "id": "sweep", "x": 600, "y": 330, "icon": "trend", "title": "Status sweep", "stat": "open applications reconciled", "tone": "default", "detail": "Every open application is checked before new work starts." },
-          { "id": "router", "x": 900, "y": 330, "icon": "route", "title": "What needs Brian first?", "stat": "priority ladder · first match wins", "tone": "accent", "detail": "Offers beat warm messages, messages beat invites, invites beat cold scouting." },
-          { "id": "offers", "x": 1200, "y": 0, "icon": "check", "title": "1 · Offer pending", "stat": "real money on the table", "tone": "default", "detail": "Terms are read before Brian accepts or declines." },
-          { "id": "messages", "x": 1200, "y": 110, "icon": "mail", "title": "2 · Client message unread", "stat": "warm client beats cold application", "tone": "default", "detail": "The thread is read before a reply is drafted." },
-          { "id": "stage", "x": 1200, "y": 330, "icon": "trend", "title": "4 · Proposal moved stage", "stat": "lead with next step", "tone": "default", "detail": "A live proposal changed stage and needs the next action." },
-          { "id": "apply", "x": 1500, "y": 440, "icon": "browser", "title": "Apply", "stat": "the live application loop", "tone": "accent", "detail": "Browser-led, with Brian in the room." },
-          { "id": "preflight", "x": 1800, "y": 440, "icon": "check", "title": "Pre-flight", "stat": "lessons · templates · connects", "tone": "default", "detail": "Reads lessons, live templates, and the connects budget before the form opens." },
-          { "id": "loom", "x": 2100, "y": 440, "icon": "browser", "title": "Brian records Loom", "stat": "wait until he says done", "tone": "default", "pill": { "label": "Brian", "tone": "warn" }, "detail": "The session waits; it does not guess from silence." },
-          { "id": "letter", "x": 2400, "y": 440, "icon": "form", "title": "Write the cover letter", "stat": "personalized after Loom", "tone": "default", "detail": "The letter and screening answers are drafted after Brian finishes recording." },
-          { "id": "send", "x": 2700, "y": 440, "icon": "send", "title": "Brian clicks Send", "stat": "explicit go for this job", "tone": "accent", "pill": { "label": "Brian", "tone": "warn" }, "detail": "Submitting spends connects, so Brian gives the final go." },
-          { "id": "log", "x": 3000, "y": 330, "icon": "log", "title": "Close out", "stat": "proposal id · connects · status", "tone": "default", "detail": "The proposal ID and spend are logged back to Notion." }
+          {
+            "id": "entry",
+            "phase": "start",
+            "label": "You type /upwork-team",
+            "sub": "One front door",
+            "icon": "terminal"
+          },
+          {
+            "id": "dash",
+            "phase": "start",
+            "label": "Dashboard check",
+            "sub": "Connects · offers · invites",
+            "icon": "db"
+          },
+          {
+            "id": "sweep",
+            "phase": "check",
+            "label": "Status sweep",
+            "sub": "Open applications reconciled",
+            "icon": "trend"
+          },
+          {
+            "id": "router",
+            "phase": "check",
+            "label": "What needs you first?",
+            "sub": "First match wins",
+            "icon": "route"
+          },
+          {
+            "id": "offers",
+            "phase": "handle",
+            "label": "Offer pending",
+            "sub": "Real money on the table",
+            "icon": "check"
+          },
+          {
+            "id": "messages",
+            "phase": "handle",
+            "label": "Client message unread",
+            "sub": "Warm beats cold",
+            "icon": "mail"
+          },
+          {
+            "id": "preflight",
+            "phase": "apply",
+            "label": "Pre-flight",
+            "sub": "Lessons · templates · connects",
+            "icon": "shield"
+          },
+          {
+            "id": "loom",
+            "phase": "apply",
+            "label": "Record a Loom",
+            "sub": "Wait until you say done",
+            "icon": "user",
+            "badge": "you"
+          },
+          {
+            "id": "letter",
+            "phase": "apply",
+            "label": "Write the cover letter",
+            "sub": "Personal, after the Loom",
+            "icon": "form"
+          },
+          {
+            "id": "sendit",
+            "phase": "send",
+            "label": "You click Send",
+            "sub": "Your go for this job",
+            "icon": "send",
+            "badge": "gate"
+          },
+          {
+            "id": "log",
+            "phase": "send",
+            "label": "Close out",
+            "sub": "Proposal id · status",
+            "icon": "log"
+          }
         ],
         "edges": [
-          { "id": "e-entry-dash", "source": "entry", "target": "dash", "animated": false },
-          { "id": "e-dash-sweep", "source": "dash", "target": "sweep", "animated": false },
-          { "id": "e-sweep-router", "source": "sweep", "target": "router", "animated": false },
-          { "id": "e-router-offers", "source": "router", "target": "offers", "animated": false, "label": "1" },
-          { "id": "e-router-messages", "source": "router", "target": "messages", "animated": false, "label": "2" },
-          { "id": "e-router-stage", "source": "router", "target": "stage", "animated": false, "label": "4" },
-          { "id": "e-stage-apply", "source": "stage", "target": "apply", "animated": false },
-          { "id": "e-apply-preflight", "source": "apply", "target": "preflight", "animated": false },
-          { "id": "e-preflight-loom", "source": "preflight", "target": "loom", "animated": false },
-          { "id": "e-loom-letter", "source": "loom", "target": "letter", "animated": false },
-          { "id": "e-letter-send", "source": "letter", "target": "send", "animated": false },
-          { "id": "e-send-log", "source": "send", "target": "log", "animated": false }
+          {
+            "from": "entry",
+            "to": "dash"
+          },
+          {
+            "from": "dash",
+            "to": "sweep"
+          },
+          {
+            "from": "sweep",
+            "to": "router"
+          },
+          {
+            "from": "router",
+            "to": "offers",
+            "label": "first match"
+          },
+          {
+            "from": "offers",
+            "to": "messages"
+          },
+          {
+            "from": "messages",
+            "to": "preflight",
+            "label": "then apply"
+          },
+          {
+            "from": "preflight",
+            "to": "loom"
+          },
+          {
+            "from": "loom",
+            "to": "letter"
+          },
+          {
+            "from": "letter",
+            "to": "sendit"
+          },
+          {
+            "from": "sendit",
+            "to": "log"
+          }
         ]
       }
     },
@@ -187,24 +574,107 @@
         { "name": "Blotato", "command": "/blotato", "seat": "Blotato Specialist", "owns": "The publishing handoff after approval." }
       ],
       "flow": {
-        "topologySource": "src/lib/agentTeams/flowModel.ts · content-team builder",
+        "phases": [
+          {
+            "id": "start",
+            "label": "Start",
+            "color": "sky"
+          },
+          {
+            "id": "draft",
+            "label": "Draft",
+            "color": "amber"
+          },
+          {
+            "id": "ship",
+            "label": "Review & publish",
+            "color": "teal"
+          }
+        ],
         "nodes": [
-          { "id": "entry", "x": 0, "y": 220, "icon": "terminal", "title": "You type /content-team", "stat": "one front door", "tone": "accent", "detail": "The team loads the Notion page, desk skills, account canon, queue, and source context before drafting." },
-          { "id": "scan", "x": 300, "y": 220, "icon": "search", "title": "Source scan", "stat": "questions · DMs · issue · trends", "tone": "default", "detail": "The researcher gathers real source material before any copy is written." },
-          { "id": "router", "x": 600, "y": 220, "icon": "route", "title": "Desk router", "stat": "pick the platform desk", "tone": "accent", "detail": "The order routes to the right platform desk instead of a generic writer." },
-          { "id": "threads", "x": 900, "y": 110, "icon": "form", "title": "Threads desk", "stat": "purpose before draft", "tone": "default", "detail": "The Threads writer declares the purpose before the words." },
-          { "id": "tiktok", "x": 900, "y": 330, "icon": "browser", "title": "TikTok desk", "stat": "HOOK · RECAPTURE · BEATS", "tone": "default", "detail": "Scripts are written in the approved TikTok shape." },
-          { "id": "review", "x": 1200, "y": 220, "icon": "check", "title": "Review queue", "stat": "Brian approves", "tone": "default", "pill": { "label": "Brian", "tone": "warn" }, "detail": "Drafts wait for Brian's click before the publishing handoff." },
-          { "id": "blotato", "x": 1500, "y": 220, "icon": "send", "title": "Blotato handoff", "stat": "approved only", "tone": "accent", "detail": "Approved posts move into the scheduling/publishing lane." }
+          {
+            "id": "entry",
+            "phase": "start",
+            "label": "You type /content-team",
+            "sub": "One front door",
+            "icon": "terminal"
+          },
+          {
+            "id": "scan",
+            "phase": "start",
+            "label": "Source scan",
+            "sub": "Questions · DMs · trends",
+            "icon": "search"
+          },
+          {
+            "id": "router",
+            "phase": "start",
+            "label": "Desk router",
+            "sub": "Pick the platform desk",
+            "icon": "route"
+          },
+          {
+            "id": "threads",
+            "phase": "draft",
+            "label": "Threads desk",
+            "sub": "Purpose before draft",
+            "icon": "form"
+          },
+          {
+            "id": "tiktok",
+            "phase": "draft",
+            "label": "TikTok desk",
+            "sub": "Hook · recapture · beats",
+            "icon": "browser"
+          },
+          {
+            "id": "queue",
+            "phase": "ship",
+            "label": "Review queue",
+            "sub": "You approve",
+            "icon": "check",
+            "badge": "gate"
+          },
+          {
+            "id": "handoff",
+            "phase": "ship",
+            "label": "Scheduler handoff",
+            "sub": "Approved posts only",
+            "icon": "send"
+          }
         ],
         "edges": [
-          { "id": "e-entry-scan", "source": "entry", "target": "scan", "animated": false },
-          { "id": "e-scan-router", "source": "scan", "target": "router", "animated": false },
-          { "id": "e-router-threads", "source": "router", "target": "threads", "animated": false, "label": "Threads" },
-          { "id": "e-router-tiktok", "source": "router", "target": "tiktok", "animated": false, "label": "TikTok" },
-          { "id": "e-threads-review", "source": "threads", "target": "review", "animated": false },
-          { "id": "e-tiktok-review", "source": "tiktok", "target": "review", "animated": false },
-          { "id": "e-review-blotato", "source": "review", "target": "blotato", "animated": false, "label": "approved" }
+          {
+            "from": "entry",
+            "to": "scan"
+          },
+          {
+            "from": "scan",
+            "to": "router"
+          },
+          {
+            "from": "router",
+            "to": "threads",
+            "label": "Threads"
+          },
+          {
+            "from": "router",
+            "to": "tiktok",
+            "label": "TikTok"
+          },
+          {
+            "from": "threads",
+            "to": "queue"
+          },
+          {
+            "from": "tiktok",
+            "to": "queue"
+          },
+          {
+            "from": "queue",
+            "to": "handoff",
+            "label": "approved"
+          }
         ]
       }
     }
